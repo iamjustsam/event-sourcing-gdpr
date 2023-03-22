@@ -1,4 +1,6 @@
 ﻿using EventSourcingGdpr.Cryptoshredding.Cryptoshredding;
+using EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Keystore;
+using EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Serialization;
 using EventSourcingGdpr.Cryptoshredding.Domain;
 using Marten;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,10 +57,8 @@ personAggregate!.HandleDataRemovalRequest();
 session.Events.Append(personAggregate.Id, personAggregate.DomainEvents);
 await session.SaveChangesAsync();
 
-var keyStore = scopedProvider.GetRequiredService<IKeyStore>();
-var keyStoreSession = keyStore.OpenSession();
-keyStoreSession.Delete<EncryptionKey>($"{person.Id}"); // Person.Id is the dataSubjectId, which is used as the key id
-await keyStoreSession.SaveChangesAsync();
+var cryptoRepository = scopedProvider.GetRequiredService<ICryptoRepository>();
+await cryptoRepository.DeleteEncryptionKey($"{person.Id}", default); // Person.Id is the dataSubjectId, which is used as the key id
 
 // Fetch person again
 personAggregate = await session.Events.AggregateStreamAsync<Person>(person.Id);

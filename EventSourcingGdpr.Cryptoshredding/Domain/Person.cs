@@ -1,4 +1,5 @@
 ﻿using EventSourcingGdpr.Cryptoshredding.Cryptoshredding;
+using EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Attributes;
 
 namespace EventSourcingGdpr.Cryptoshredding.Domain;
 

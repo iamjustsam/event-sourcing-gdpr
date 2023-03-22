@@ -1,5 +1,8 @@
 ﻿using System.Buffers;
 using System.Data.Common;
+using EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Attributes;
+using EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Decryption;
+using EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Encryption;
 using Marten;
 using Marten.Services.Json;
 using Newtonsoft.Json;
@@ -7,7 +10,7 @@ using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Weasel.Core;
 
-namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding;
+namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Serialization;
 
 public class EncryptionSerializer : ISerializer
 {

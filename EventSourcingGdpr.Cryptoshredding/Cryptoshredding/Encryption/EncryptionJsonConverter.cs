@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using Newtonsoft.Json;
 
-namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding;
+namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Encryption;
 
 public class EncryptionJsonConverter : JsonConverter
 {

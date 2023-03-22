@@ -1,4 +1,4 @@
-﻿namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding;
+﻿namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Keystore;
 
 public class CryptoRepository : ICryptoRepository
 {
@@ -29,9 +29,11 @@ public class CryptoRepository : ICryptoRepository
         return await session.LoadAsync<EncryptionKey>(id, cancellationToken);
     }
 
-    public async Task DeleteEncryptionKey(string id)
+    public async Task DeleteEncryptionKey(string id, CancellationToken cancellationToken)
     {
         await using var session = _keyStore.LightweightSession();
         session.Delete<EncryptionKey>(id);
+
+        await session.SaveChangesAsync(cancellationToken);
     }
 }

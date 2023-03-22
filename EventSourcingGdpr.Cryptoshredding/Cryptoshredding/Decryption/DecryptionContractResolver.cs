@@ -1,26 +1,27 @@
 ﻿using System.Reflection;
 using System.Security.Cryptography;
+using EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Attributes;
 using Marten;
 using Marten.Services.Json;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding;
+namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Decryption;
 
-public class EncryptionContractResolver : JsonNetContractResolver
+public class DecryptionContractResolver : JsonNetContractResolver
 {
-    private readonly ICryptoTransform _encryptor;
+    private readonly ICryptoTransform _decryptor;
     private readonly FieldEncryptionDecryption _fieldEncryptionDecryption;
 
-    public EncryptionContractResolver(
-        ICryptoTransform encryptor,
+    public DecryptionContractResolver(
+        ICryptoTransform decryptor,
         FieldEncryptionDecryption fieldEncryptionDecryption,
         Casing casing,
         CollectionStorage collectionStorage,
         NonPublicMembersStorage nonPublicMembersStorage = NonPublicMembersStorage.Default) 
         : base(casing, collectionStorage, nonPublicMembersStorage)
     {
-        _encryptor = encryptor;
+        _decryptor = decryptor;
         _fieldEncryptionDecryption = fieldEncryptionDecryption;
     }
 
@@ -45,7 +46,7 @@ public class EncryptionContractResolver : JsonNetContractResolver
         var property = base.CreateProperty(member, memberSerialization);
 
         if (member.ShouldEncrypt())
-            property.Converter = new EncryptionJsonConverter(_encryptor, _fieldEncryptionDecryption);
+            property.Converter = new DecryptionJsonConverter(_decryptor, _fieldEncryptionDecryption);
 
         return property;
     }

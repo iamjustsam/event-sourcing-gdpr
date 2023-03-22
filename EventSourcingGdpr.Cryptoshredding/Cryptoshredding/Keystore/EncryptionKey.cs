@@ -1,4 +1,4 @@
-﻿namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding;
+﻿namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Keystore;
 
 public class EncryptionKey
 {

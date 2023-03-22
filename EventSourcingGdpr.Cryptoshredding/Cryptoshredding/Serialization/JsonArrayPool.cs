@@ -1,7 +1,7 @@
 ﻿using System.Buffers;
 using Newtonsoft.Json;
 
-namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding;
+namespace EventSourcingGdpr.Cryptoshredding.Cryptoshredding.Serialization;
 
 internal class JsonArrayPool<T>: IArrayPool<T>
 {
