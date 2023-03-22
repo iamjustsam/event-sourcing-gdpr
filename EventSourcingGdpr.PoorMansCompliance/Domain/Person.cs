@@ -50,6 +50,8 @@ public class Person : Aggregate
 
     public void Apply(DataRemovalRequested @event)
     {
+        Firstname = $"{Firstname[0]}***";
+        Lastname = $"{Lastname[0]}***";
         Email = "***";
     }
 }

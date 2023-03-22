@@ -38,6 +38,7 @@ var events = await session.Events.FetchStreamAsync(person.Id);
 // Transform events
 var newEvents = events.Select(@event => @event.Data switch
 {
+    PersonCreated eventData => eventData with { FirstName = $"{eventData.FirstName[0]}***", LastName = $"{eventData.LastName[0]}***" },
     PersonEmailUpdated eventData => eventData with { Email = "***" },
     _ => @event.Data
 });
