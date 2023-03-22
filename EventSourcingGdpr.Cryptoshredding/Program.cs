@@ -46,15 +46,20 @@ session.Events.Append(person.Id, person.DomainEvents);
 
 await session.SaveChangesAsync();
 
-// Fetch and show person
-var dbPerson = await session.LoadAsync<Person>(person.Id);
-log.Information("{@Person}", dbPerson);
+// Fetch person
+var personAggregate = await session.Events.AggregateStreamAsync<Person>(person.Id);
+log.Information("{@Person}", personAggregate);
 
-// Remove key
-// TODO: Remove key!
+// Append removal request and remove key
+personAggregate!.HandleDataRemovalRequest();
+session.Events.Append(personAggregate.Id, personAggregate.DomainEvents);
+await session.SaveChangesAsync();
 
-// Eject previously fetched data
-session.Eject(dbPerson!);
+var keyStore = scopedProvider.GetRequiredService<IKeyStore>();
+var keyStoreSession = keyStore.OpenSession();
+keyStoreSession.Delete<EncryptionKey>($"{person.Id}"); // Person.Id is the dataSubjectId, which is used as the key id
+await keyStoreSession.SaveChangesAsync();
 
-dbPerson = await session.LoadAsync<Person>(person.Id);
-log.Information("{@Person}", dbPerson);
+// Fetch person again
+personAggregate = await session.Events.AggregateStreamAsync<Person>(person.Id);
+log.Information("{@Person}", personAggregate);

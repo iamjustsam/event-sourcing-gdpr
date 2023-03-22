@@ -4,7 +4,6 @@ namespace EventSourcingGdpr.Cryptoshredding.Domain;
 
 public class Person : Aggregate
 {
-    [DataSubjectId]
     public Guid Id { get; set; }
     public string Firstname { get; set; } = default!;
     public string Lastname { get; set; } = default!;
@@ -15,6 +14,7 @@ public class Person : Aggregate
     {
         On<PersonCreated>(Apply);
         On<PersonEmailUpdated>(Apply);
+        On<DataRemovalRequested>(Apply);
     }
 
     public static Person CreatePerson(Guid id, string firstName, string lastName)
@@ -33,6 +33,12 @@ public class Person : Aggregate
         Handle(@event);
     }
 
+    public void HandleDataRemovalRequest()
+    {
+        var @event = new DataRemovalRequested(Id);
+        Handle(@event);
+    }
+
     public void Apply(PersonCreated @event)
     {
         Id = @event.Id;
@@ -44,7 +50,13 @@ public class Person : Aggregate
     {
         Email = @event.Email;
     }
+
+    public void Apply(DataRemovalRequested @event)
+    {
+        Email = "***";
+    }
 }
 
-public record PersonCreated([property:DataSubjectId] Guid Id, string FirstName, string LastName) : IDomainEvent;
+public record PersonCreated(Guid Id, string FirstName, string LastName) : IDomainEvent;
 public record PersonEmailUpdated([property:DataSubjectId] Guid Id, [property:PersonalData] string Email) : IDomainEvent;
+public record DataRemovalRequested(Guid Id) : IDomainEvent;

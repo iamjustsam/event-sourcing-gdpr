@@ -56,11 +56,23 @@ public class EncryptionSerializer : ISerializer
         // TODO: Decryption
         using var textReader = reader.GetTextReader(index);
         using var jsonReader = GetJsonTextReader(textReader);
-
+        
         var contractResolver = new JsonNetContractResolver();
         var serializer = CreateSerializer(contractResolver);
 
-        return serializer.Deserialize<T>(jsonReader)!;
+        // If T does not have a DataSubjectId, we can just deserialize
+        if (!HasDataSubjectId(typeof(T)))
+            return serializer.Deserialize<T>(jsonReader)!;
+
+        var envelope = serializer.Deserialize<CryptoEnvelope>(jsonReader)!;
+
+        var encryptionContractResolver = GetDecryptionContractResolverAsync(envelope.DataSubjectId, default).GetAwaiter().GetResult();
+        var encryptionSerializer = CreateSerializer(encryptionContractResolver);
+
+        using var sr = new StringReader(envelope.Data!);
+        using var jr = GetJsonTextReader(sr);
+
+        return encryptionSerializer.Deserialize<T>(jr)!;
     }
 
     public ValueTask<T> FromJsonAsync<T>(Stream stream, CancellationToken cancellationToken = default)
@@ -93,7 +105,19 @@ public class EncryptionSerializer : ISerializer
         var contractResolver = new JsonNetContractResolver();
         var serializer = CreateSerializer(contractResolver);
 
-        return serializer.Deserialize(textReader, type)!;
+        // If T does not have a DataSubjectId, we can just deserialize
+        if (!HasDataSubjectId(type))
+            return serializer.Deserialize(jsonReader, type)!;
+
+        var envelope = serializer.Deserialize<CryptoEnvelope>(jsonReader)!;
+
+        var encryptionContractResolver = GetDecryptionContractResolverAsync(envelope.DataSubjectId, default).GetAwaiter().GetResult();
+        var encryptionSerializer = CreateSerializer(encryptionContractResolver);
+
+        using var sr = new StringReader(envelope.Data!);
+        using var jr = GetJsonTextReader(sr);
+
+        return encryptionSerializer.Deserialize(jr, type)!;
     }
 
     public ValueTask<object> FromJsonAsync(Type type, Stream stream, CancellationToken cancellationToken = new CancellationToken())
@@ -147,9 +171,8 @@ public class EncryptionSerializer : ISerializer
 
     private async Task ToJsonAsync(object? document, TextWriter writer, CancellationToken cancellationToken)
     {
-        // TODO: Encryption
         var dataSubjectId = GetDataSubjectId(document);
-        var contractResolver = await GetContractResolverAsync(dataSubjectId, cancellationToken);
+        var contractResolver = new JsonNetContractResolver();
         var serializer = CreateSerializer(contractResolver);
 
         await using var jsonWriter = new JsonTextWriter(writer)
@@ -157,7 +180,21 @@ public class EncryptionSerializer : ISerializer
             ArrayPool = _jsonArrayPool, CloseOutput = false, AutoCompleteOnClose = false
         };
 
-        serializer.Serialize(jsonWriter, document);
+        if (string.IsNullOrWhiteSpace(dataSubjectId))
+        {
+            serializer.Serialize(jsonWriter, document);
+        }
+        else
+        {
+            var encryptionContractResolver = await GetEncryptionContractResolverAsync(dataSubjectId, cancellationToken);
+            var encryptionSerializer = CreateSerializer(encryptionContractResolver);
+
+            await using var sw = new StringWriter();
+            encryptionSerializer.Serialize(sw, document);
+            
+            var envelope = new CryptoEnvelope(dataSubjectId, sw.ToString());
+            serializer.Serialize(jsonWriter, envelope);
+        }
 
         await writer.FlushAsync();
     }
@@ -195,12 +232,34 @@ public class EncryptionSerializer : ISerializer
         return dataSubjectId;
     }
 
-    private async Task<IContractResolver> GetContractResolverAsync(string dataSubjectId, CancellationToken cancellationToken)
+    private static bool HasDataSubjectId(Type type)
     {
+        var properties = type.GetProperties();
+        var dataSubjectIdPropertyInfo = properties.FirstOrDefault(x => x.GetCustomAttributes(typeof(DataSubjectIdAttribute), false).Any(y => y is DataSubjectIdAttribute));
+
+        return dataSubjectIdPropertyInfo is not null;
+    }
+
+    private async Task<IContractResolver> GetEncryptionContractResolverAsync(string? dataSubjectId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(dataSubjectId))
+            return new JsonNetContractResolver();
+
         var encryptor = await _encryptorDecryptor.GetEncryptorAsync(dataSubjectId, cancellationToken);
         var fieldEncryptionDecryption = new FieldEncryptionDecryption();
 
         return new EncryptionContractResolver(encryptor, fieldEncryptionDecryption, Casing, CollectionStorage, NonPublicMembersStorage);
+    }
+
+    private async Task<IContractResolver> GetDecryptionContractResolverAsync(string? dataSubjectId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(dataSubjectId))
+            return new JsonNetContractResolver();
+
+        var decryptor = await _encryptorDecryptor.GetDecryptorAsync(dataSubjectId, cancellationToken);
+        var fieldEncryptionDecryption = new FieldEncryptionDecryption();
+
+        return new DecryptionContractResolver(decryptor, fieldEncryptionDecryption, Casing, CollectionStorage, NonPublicMembersStorage);
     }
 
     private JsonSerializer CreateSerializer(IContractResolver contractResolver)
